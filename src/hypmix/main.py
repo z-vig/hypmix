@@ -6,17 +6,21 @@ import sys
 from pathlib import Path
 
 
-def cubeview():
+def mixview():
     app = QApplication(sys.argv)
-    main = MixView(
-        base=Path("D:/moon_data/m3/Gruithuisen_Region/Gruithuisen_Mosaics/"),
-        model=Path(
-            "D:/moon_data/m3/Gruithuisen_Region/Gruithuisen_Mosaics/M3G_GDOMES_mixmodel.hdf5"
-        ),
-    )
+
+    # For dev
+    # main = MixView(
+    #     base=Path("D:/moon_data/m3/Gruithuisen_Region/Gruithuisen_Mosaics/"),
+    #     model=Path(
+    #         "D:/moon_data/m3/Gruithuisen_Region/Gruithuisen_Mosaics/M3G_GDOMES_mixmodel.hdf5"
+    #     ),
+    # )
+
+    main = MixView()
     main.show()
     app.exec()
 
 
 def main():
-    cubeview()
+    mixview()

@@ -22,3 +22,6 @@ model.add_virtual_shade()
 res = model.run("save/path/results.hdf5", "model_name")
 hypmix.save_model_result(res)
 ```
+
+## MixView GUI
+![Image of a Graphical User Interface](./resources/images/gui_example.png)
