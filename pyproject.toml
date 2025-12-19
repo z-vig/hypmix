@@ -1,6 +1,6 @@
 [project]
 name = "hypmix"
-version = "0.2.0"
+version = "0.2.1"
 description = "A Hyperspectral Linear Mixture anlysis code for python."
 authors = [
     {name = "Z.M. Vig",email = "zvig@umd.edu"}
