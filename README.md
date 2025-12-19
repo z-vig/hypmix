@@ -24,4 +24,4 @@ hypmix.save_model_result(res)
 ```
 
 ## MixView GUI
-![Image of a Graphical User Interface](./src/hypmix/resources/images/gui_example.png)
+![Image of a Graphical User Interface](https://github.com/z-vig/hypmix/blob/main/src/hypmix/resources/images/gui_example.png?raw=true)
