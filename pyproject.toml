@@ -1,6 +1,6 @@
 [project]
 name = "hypmix"
-version = "0.2.2"
+version = "0.2.3"
 description = "A Hyperspectral Linear Mixture anlysis code for python."
 authors = [
     {name = "Z.M. Vig",email = "zvig@umd.edu"}
@@ -21,9 +21,6 @@ dependencies = [
 
 [project.scripts]
 mixview = "hypmix.main:main"
-
-[tool.poetry.include]
-"src/project/resources/images/*.png = "project/resources"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

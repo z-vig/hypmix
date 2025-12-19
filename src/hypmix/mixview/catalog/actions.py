@@ -30,4 +30,5 @@ class ActionCatalog:
     open_frac = ActionSpec(text="Fraction Cube", callback_name="load_frac")
     open_resi = ActionSpec(text="Residual Cube", callback_name="load_resi")
     open_model = ActionSpec(text="Hypmix Model", callback_name="load_model")
+    open_data = ActionSpec(text="Data", callback_name="load_data")
     set_base = ActionSpec(text="Set Base", callback_name="set_base")

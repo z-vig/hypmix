@@ -21,7 +21,9 @@ from hypmix.io import load_model_result
 from .image_view_container import ImViewContainer
 from .model_tree import ModelTreeWidget
 from .endmember_viewer import EndmemberViewerWidget
+from .model_viewer import ModelViewerWidget
 from .catalog.actions import ActionCatalog
+from .catalog.handlers import SignalHandlers
 
 # Top-Level Imports
 from hypmix.file_opening_utils import open_cube
@@ -41,6 +43,7 @@ class MixView(QMainWindow):
         frac: Path | None = None,
         resi: Path | None = None,
         model: Path | None = None,
+        data: Path | None = None,
         base: Path | None = None,
     ) -> None:
         super().__init__()
@@ -53,6 +56,7 @@ class MixView(QMainWindow):
         self.resi_view = pg.ImageView()
         self.model_tree = ModelTreeWidget()
         self.em_view = EndmemberViewerWidget()
+        self.model_view = ModelViewerWidget()
         self.tree_dock: QDockWidget | None = None
 
         self.frac_container = ImViewContainer(self.frac_view, parent=self)
@@ -88,8 +92,18 @@ class MixView(QMainWindow):
         em_dock.setMinimumHeight(200)
         self.em_dock = em_dock
 
+        model_dock = QDockWidget("Model Comparison", self)
+        model_dock.setWidget(self.model_view)
+        model_dock.setAllowedAreas(
+            Qt.DockWidgetArea.TopDockWidgetArea
+            | Qt.DockWidgetArea.BottomDockWidgetArea
+        )
+        model_dock.setMinimumHeight(200)
+        self.em_dock = model_dock
+
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, em_dock)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, tree_dock)
+        self.tabifyDockWidget(em_dock, model_dock)
 
         menubar = self.menuBar()
 
@@ -106,9 +120,11 @@ class MixView(QMainWindow):
         open_menu.addAction(ActionCatalog.open_frac.build(main_widget, self))
         open_menu.addAction(ActionCatalog.open_resi.build(main_widget, self))
         open_menu.addAction(ActionCatalog.open_model.build(main_widget, self))
+        open_menu.addAction(ActionCatalog.open_data.build(main_widget, self))
 
         data_menu.addAction(tree_dock.toggleViewAction())
         data_menu.addAction(em_dock.toggleViewAction())
+        data_menu.addAction(model_dock.toggleViewAction())
 
         self.model_tree.tree.itemSelectionChanged.connect(self.set_model)
 
@@ -120,8 +136,15 @@ class MixView(QMainWindow):
             self.state.base_dir = base
         if model is not None:
             self.load_model(fp=model)
+        if data is not None:
+            self.load_data(fp=data)
 
         self.resize(1400, 1000)
+
+        self.handler = SignalHandlers(self)
+
+        self.frac_container.mouse_moved.connect(self.handler.track_cursor)
+        self.resi_container.mouse_moved.connect(self.handler.track_cursor)
 
     def load_model(self, *, fp: Path | None = None):
         if fp is None:
@@ -163,6 +186,20 @@ class MixView(QMainWindow):
         cube, _suffix = open_cube(fp)
         self.set_resi(cube)
 
+    def load_data(self, *, fp: Path | None = None):
+        if fp is None:
+            fp_str, fp_type = QFileDialog.getOpenFileName(
+                caption="Select Data Cube",
+                filter=(
+                    "Spectral Cube Files (*.spcub *.geospcub);;"
+                    "Rasterio-Compatible Files (*.bsq *.img *.tif)"
+                ),
+                dir=str(self.state.base_dir),
+            )
+            fp = Path(fp_str)
+        cube, _suffix = open_cube(fp)
+        self.set_data(cube)
+
     def set_frac(self, cube: np.ndarray):
         self.frac_view.setImage(cube, axes={"y": 0, "x": 1, "t": 2})
         self.frac_view.setLevels(0, 1)
@@ -173,6 +210,9 @@ class MixView(QMainWindow):
         vals = cube[np.isfinite(cube[:, :, idx]), idx]
         lo, hi = np.percentile(vals, [0.5, 99.5])
         self.resi_view.setLevels(lo, hi)
+
+    def set_data(self, cube: np.ndarray):
+        self.model_view.set_data(cube)
 
     def set_base(self):
         fp = QFileDialog.getExistingDirectory()
@@ -190,3 +230,4 @@ class MixView(QMainWindow):
         wvl = [f"{str(i)} nm" for i in wvl]
         self.resi_container.connect_title(wvl)
         self.em_view.show_endmembers(model)
+        self.model_view.set_model(model)

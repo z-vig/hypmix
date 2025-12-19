@@ -1,11 +1,17 @@
 # Dependencies
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
+from PySide6.QtCore import Signal
 import pyqtgraph as pg  # type: ignore
 import cmap
 import numpy as np
 
+# Top-Level Imports
+from hypmix.util_classes import CursorInfo
+
 
 class ImViewContainer(QWidget):
+    mouse_moved = Signal(CursorInfo)
+
     def __init__(
         self,
         imview_widget: pg.ImageView,
@@ -38,6 +44,8 @@ class ImViewContainer(QWidget):
 
         self.setLayout(layout)
 
+        self.imview_widget.scene.sigMouseMoved.connect(self.on_movement)  # type: ignore  # noqa
+
     def connect_title(self, lbls: list):
         def _update_title():
             title = lbls[self.imview_widget.currentIndex]
@@ -45,3 +53,22 @@ class ImViewContainer(QWidget):
 
         _update_title()
         self.imview_widget.timeLine.sigPositionChanged.connect(_update_title)
+
+    def on_movement(self, pos):
+        view_pos = self.imview_widget.getView().mapSceneToView(pos)
+        x_float = view_pos.x()
+        y_float = view_pos.y()
+        x_int = int(x_float)
+        y_int = int(y_float)
+        img = self.imview_widget.getImageItem().image  # axes flipped
+        if img is None:
+            return
+        if 0 <= y_int < img.shape[1] and 0 <= x_int < img.shape[0]:
+            ci = CursorInfo(
+                x=x_float,
+                y=y_float,
+                xint=x_int,
+                yint=y_int,
+                val=img[x_int, y_int],
+            )
+            self.mouse_moved.emit(ci)
