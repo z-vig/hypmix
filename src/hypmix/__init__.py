@@ -1,7 +1,7 @@
 from .endmember import InSceneEndMember, ExternalEndMember, EndMember
 from .io import ModelResult, save_model_result, load_model_result
 from .run_model import MixtureModel
-from . import typing
+from .typing import Spectrum
 
 __all__ = [
     "InSceneEndMember",
@@ -11,5 +11,5 @@ __all__ = [
     "save_model_result",
     "load_model_result",
     "MixtureModel",
-    "typing",
+    "Spectrum",
 ]
