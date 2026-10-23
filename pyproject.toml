@@ -18,3 +18,8 @@ dependencies = [
 reflspeckit = { path = "../reflspeckit", editable = true }
 spectralio = { path = "../spectralio", editable = true }
 cubio = { path = "../cubio", editable = true }
+
+[dependency-groups]
+dev = [
+    "twine>=7.0.0",
+]
