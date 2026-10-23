@@ -1,7 +1,6 @@
 # Standard Libraries
 from dataclasses import dataclass
-from typing_extensions import Annotated
-from typing import Tuple
+from typing import Annotated
 
 # Dependencies
 import numpy as np
@@ -57,7 +56,7 @@ class UnMixedCube:
 def _solve_cube(
     G: Annotated[npt.NDArray[np.float32], (2,)],
     d: Annotated[npt.NDArray[np.float32], (3,)],
-) -> Tuple[ImageCubeLike, ImageCubeLike, ImageCubeLike]:
+) -> tuple[ImageCubeLike, ImageCubeLike, ImageCubeLike]:
     prefix = np.linalg.inv(G.T @ G) @ G.T
 
     fracs = np.einsum("ij,...j->...i", prefix, d)

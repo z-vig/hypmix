@@ -4,11 +4,12 @@ from dataclasses import dataclass, field
 # Dependencies
 import numpy as np
 
-# Relative Imports
-from .typing import ImageCube, Spectrum, PathLike
-from .io import ModelResult
-from .model_math import unmix_spectral_cube, MixedCube
 from .endmember import EndMember, EndMemberGroup
+from .io import ModelResult
+from .model_math import MixedCube, unmix_spectral_cube
+
+# Relative Imports
+from .typing import ImageCube, PathLike, Spectrum
 
 
 class EndmemberAlreadyExistsError(Exception):
@@ -33,6 +34,9 @@ class MixtureModel:
         List of model endmembers to use.
     data_cube: ImageCube
         Spectral data cube.
+    state: ModelState
+        Instance of ModelState object, which indicates whether there are
+        special endmembers like shade or blackbody.
     """
 
     endmembers: list[EndMember]

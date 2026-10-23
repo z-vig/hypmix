@@ -40,7 +40,7 @@ class EndmemberViewerWidget(QWidget):
             rspec = rsk.Spec1D(em.spectrum.data, em.spectrum.wvl)
             rspec.outlier_removal()
             rspec.noise_reduction("box_filter", 7)
-            rspec.continuum_removal("double_line")
+            rspec.continuum_removal("single_line", [815, 1200])
 
             _contrem = pg.PlotDataItem(
                 rspec.wavelength.values,

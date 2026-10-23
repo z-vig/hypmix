@@ -11,9 +11,11 @@ def mixview():
 
     # For dev
     main = MixView(
-        base=Path("D:/moon_data/m3/Gruithuisen_Region/Gruithuisen_Mosaics/"),
+        base=Path(
+            "D:/moon_data/m3/Gruithuisen_Region/Gruithuisen_Mosaics_New/"
+        ),
         model=Path(
-            "D:/moon_data/m3/Gruithuisen_Region/Gruithuisen_Mosaics/M3G_GDOMES_mixmodel.hdf5"
+            "D:/moon_data/m3/Gruithuisen_Region/Gruithuisen_Mosaics_New/global_mode/model_results.hdf5"
         ),
     )
 

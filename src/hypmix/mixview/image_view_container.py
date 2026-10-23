@@ -1,9 +1,9 @@
 # Dependencies
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
-from PySide6.QtCore import Signal
-import pyqtgraph as pg  # type: ignore
 import cmap
 import numpy as np
+import pyqtgraph as pg  # type: ignore
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 # Top-Level Imports
 from hypmix.util_classes import CursorInfo
@@ -44,7 +44,7 @@ class ImViewContainer(QWidget):
 
         self.setLayout(layout)
 
-        self.imview_widget.scene.sigMouseMoved.connect(self.on_movement)  # type: ignore  # noqa
+        self.imview_widget.scene.sigMouseMoved.connect(self.on_movement)  # type: ignore
 
     def connect_title(self, lbls: list):
         def _update_title():

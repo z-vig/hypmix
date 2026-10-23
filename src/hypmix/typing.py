@@ -1,6 +1,6 @@
 # Standard Libraries
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import TypeVar, Literal, TypeAlias, TypeGuard
 from typing_extensions import Annotated
 import os
 from pathlib import Path
@@ -32,3 +32,11 @@ class ImageCube:
     def __post_init__(self):
         bands_dim = np.argmin(self.data.shape)
         self.data = np.moveaxis(self.data, bands_dim, -1)
+
+
+ResidualMode: TypeAlias = Literal["Band-by-Band", "Total R\u00b2"]
+residual_modes: list[ResidualMode] = ["Band-by-Band", "Total R²"]
+
+
+def is_valid_residual_mode(value: str) -> TypeGuard[ResidualMode]:
+    return value in residual_modes

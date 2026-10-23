@@ -18,16 +18,16 @@ Available Helper Functions::
 """
 
 # Built-Ins
+import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
-from dataclasses import dataclass
 
 # Dependencies
 import numpy as np
-import rasterio as rio  # type: ignore
+import rasterio as rio
 import spectralio as sio
-import re
-
+from cubio import cube_from_json
 
 # ---- Handling Wavelength Data Files ----
 
@@ -189,6 +189,7 @@ class CubeHandler(Protocol):
         - .spcub
         - .geospcub
         - .bsq
+        - .bil
         - .img
         - .tif
 
@@ -219,8 +220,7 @@ def open_spcub_cube(path: Path, axis_map: dict[str, int]) -> np.ndarray:
         cub_obj = sio.read_spec3D(path, kind="spcub")
     else:
         raise ValueError(
-            "Invalid File Type passed to `open_spcub_file()`: "
-            f"{path.suffix.lower()}"
+            f"Invalid File Type passed to `open_spcub_file()`: {path.suffix.lower()}"
         )
     return cub_obj.load_raster(bbl=True)
 
@@ -246,18 +246,33 @@ def open_rasterio_cube(path: Path, axis_map: dict[str, int]) -> np.ndarray:
     return cube_array
 
 
+def open_cubio_cube(path: Path, axis_map: dict[str, int]) -> np.ndarray:
+    """
+    Opening cubio-compatible datasets.
+    """
+    print("OPENING CUBIO...")
+    cc, cd = cube_from_json(path.with_suffix(".json"))
+    cd.transpose_to("BIP")
+    cd.mask.add_to_zmask(cc.get_bbl_mask())
+    data = cd.masked_array.values
+    data = data[:, :, ~np.all(np.isnan(data), axis=(0, 1))]
+    print(data.shape)
+    return data
+
+
 # Mapping from lowercase file extension to handler function.
 CUBE_HANDLERS: dict[str, CubeHandler] = {
     ".spcub": open_spcub_cube,
     ".geospcub": open_spcub_cube,
     ".bsq": open_rasterio_cube,
+    ".bil": open_cubio_cube,
     ".img": open_rasterio_cube,
     ".tif": open_rasterio_cube,
 }
 
 
 def open_cube(
-    path: str | Path, axis_map: dict[str, int] = {"x": 2, "y": 1, "b": 0}
+    path: str | Path, axis_map: dict[str, int] | None = None
 ) -> tuple[np.ndarray, str]:
     """
     Open a file that stores spectral (or other) cube-based information.
@@ -284,6 +299,8 @@ def open_cube(
     ValueError
         If the file does not have a valid extension.
     """
+    if axis_map is None:
+        axis_map = {"x": 2, "y": 1, "b": 0}
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(path)

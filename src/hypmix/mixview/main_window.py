@@ -1,32 +1,35 @@
 # Built-Ins
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+
+import numpy as np
+import pyqtgraph as pg
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction, QActionGroup
 
 # Dependency
 from PySide6.QtWidgets import (
-    QMainWindow,
-    QHBoxLayout,
-    QWidget,
-    QMenu,
-    QFileDialog,
     QDockWidget,
+    QFileDialog,
+    QHBoxLayout,
+    QMainWindow,
+    QMenu,
+    QWidget,
 )
-from PySide6.QtCore import Qt
-import pyqtgraph as pg  # type: ignore
-import numpy as np
 
+# Top-Level Imports
+from hypmix.file_opening_utils import open_cube
 from hypmix.io import load_model_result
+from hypmix.typing import ResidualMode, is_valid_residual_mode, residual_modes
+
+from .catalog.actions import ActionCatalog
+from .catalog.handlers import SignalHandlers
+from .endmember_viewer import EndmemberViewerWidget
 
 # Local Imports
 from .image_view_container import ImViewContainer
 from .model_tree import ModelTreeWidget
-from .endmember_viewer import EndmemberViewerWidget
 from .model_viewer import ModelViewerWidget
-from .catalog.actions import ActionCatalog
-from .catalog.handlers import SignalHandlers
-
-# Top-Level Imports
-from hypmix.file_opening_utils import open_cube
 
 USER_ROLE = Qt.ItemDataRole.UserRole
 VERSION_NUM = "0.2.0"
@@ -34,7 +37,8 @@ VERSION_NUM = "0.2.0"
 
 @dataclass
 class MasterState:
-    base_dir: Path = Path.cwd()
+    base_dir: Path = field(default_factory=Path.cwd)
+    residual_mode: ResidualMode = "Band-by-Band"
 
 
 class MixView(QMainWindow):
@@ -77,8 +81,7 @@ class MixView(QMainWindow):
         tree_dock = QDockWidget("Models", self)
         tree_dock.setWidget(self.model_tree)
         tree_dock.setAllowedAreas(
-            Qt.DockWidgetArea.LeftDockWidgetArea
-            | Qt.DockWidgetArea.RightDockWidgetArea
+            Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
         )
         tree_dock.setMinimumWidth(200)
         self.tree_dock = tree_dock
@@ -86,8 +89,7 @@ class MixView(QMainWindow):
         em_dock = QDockWidget("Endmembers", self)
         em_dock.setWidget(self.em_view)
         em_dock.setAllowedAreas(
-            Qt.DockWidgetArea.TopDockWidgetArea
-            | Qt.DockWidgetArea.BottomDockWidgetArea
+            Qt.DockWidgetArea.TopDockWidgetArea | Qt.DockWidgetArea.BottomDockWidgetArea
         )
         em_dock.setMinimumHeight(200)
         self.em_dock = em_dock
@@ -95,8 +97,7 @@ class MixView(QMainWindow):
         model_dock = QDockWidget("Model Comparison", self)
         model_dock.setWidget(self.model_view)
         model_dock.setAllowedAreas(
-            Qt.DockWidgetArea.TopDockWidgetArea
-            | Qt.DockWidgetArea.BottomDockWidgetArea
+            Qt.DockWidgetArea.TopDockWidgetArea | Qt.DockWidgetArea.BottomDockWidgetArea
         )
         model_dock.setMinimumHeight(200)
         self.em_dock = model_dock
@@ -126,6 +127,19 @@ class MixView(QMainWindow):
         data_menu.addAction(em_dock.toggleViewAction())
         data_menu.addAction(model_dock.toggleViewAction())
 
+        resi_menu = self.resi_view.getView().menu
+        if resi_menu is None:
+            return
+        resi_mode_group = QActionGroup(self)
+        resi_mode_group.setExclusive(True)
+        for mode in residual_modes:
+            action = resi_menu.addAction(mode)
+            action.setCheckable(True)
+            if mode == self.state.residual_mode:
+                action.setChecked(True)
+            resi_mode_group.addAction(action)
+
+        resi_mode_group.triggered.connect(self.resi_mode_changed)
         self.model_tree.tree.itemSelectionChanged.connect(self.set_model)
 
         if frac is not None:
@@ -148,7 +162,7 @@ class MixView(QMainWindow):
 
     def load_model(self, *, fp: Path | None = None):
         if fp is None:
-            fp_str, fp_type = QFileDialog.getOpenFileName(
+            fp_str, _fp_type = QFileDialog.getOpenFileName(
                 caption="Select Model Result",
                 filter=("HDF5 Files (*.hdf5)"),
                 dir=str(self.state.base_dir),
@@ -160,7 +174,7 @@ class MixView(QMainWindow):
     def load_frac(self, *, fp: Path | None = None):
 
         if fp is None:
-            fp_str, fp_type = QFileDialog.getOpenFileName(
+            fp_str, _fp_type = QFileDialog.getOpenFileName(
                 caption="Select Fraction Cube",
                 filter=(
                     "Rasterio-Compatible Files (*.bsq *.img *.tif);;"
@@ -174,7 +188,7 @@ class MixView(QMainWindow):
 
     def load_resi(self, *, fp: Path | None = None):
         if fp is None:
-            fp_str, fp_type = QFileDialog.getOpenFileName(
+            fp_str, _fp_type = QFileDialog.getOpenFileName(
                 caption="Select Residual Cube",
                 filter=(
                     "Rasterio-Compatible Files (*.bsq *.img *.tif);;"
@@ -184,15 +198,16 @@ class MixView(QMainWindow):
             )
             fp = Path(fp_str)
         cube, _suffix = open_cube(fp)
+        self.resi_data = cube
         self.set_resi(cube)
 
     def load_data(self, *, fp: Path | None = None):
         if fp is None:
-            fp_str, fp_type = QFileDialog.getOpenFileName(
+            fp_str, _fp_type = QFileDialog.getOpenFileName(
                 caption="Select Data Cube",
                 filter=(
-                    "Spectral Cube Files (*.spcub *.geospcub);;"
-                    "Rasterio-Compatible Files (*.bsq *.img *.tif)"
+                    "Rasterio-Compatible Files (*.bsq *.bil *.img *.tif);;"
+                    "Spectral Cube Files (*.spcub *.geospcub)"
                 ),
                 dir=str(self.state.base_dir),
             )
@@ -225,9 +240,29 @@ class MixView(QMainWindow):
         model = load_model_result(selection.fp, selection.model)
         self.set_frac(model.unmixed_image.fracs)
         self.set_resi(model.unmixed_image.res)
+        self.resi_data = model.unmixed_image.res
         self.frac_container.connect_title(model.endmembers.endmember_name_list)
         wvl = list(model.endmembers.endmember_list[0].spectrum.wvl)
-        wvl = [f"{str(i)} nm" for i in wvl]
+        wvl = [f"{i!r} nm" for i in wvl]
         self.resi_container.connect_title(wvl)
         self.em_view.show_endmembers(model)
         self.model_view.set_model(model)
+
+    def resi_mode_changed(self, action: QAction) -> None:
+        txt = action.text()
+        if not is_valid_residual_mode(txt):
+            return
+
+        if txt == self.state.residual_mode:
+            return
+
+        self.state.residual_mode = txt
+
+        if txt == "Band-by-Band":
+            self.set_resi(self.resi_data)
+        elif txt == "Total R²":
+            r2 = np.sqrt(np.mean(self.resi_data**2, axis=2))
+            self.resi_view.setImage(r2, axes={"y": 0, "x": 1})
+            vals = r2[np.isfinite(r2)]
+            lo, hi = np.percentile(vals, [0.5, 99.5])
+            self.resi_view.setLevels(lo, hi)
